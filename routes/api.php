@@ -12,7 +12,7 @@ use App\Http\Controllers\Api\DentalChartController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\StatsController;
-use App\Http\Controllers\Api\ProcedureController;
+use App\Http\Controllers\ProcedureController;
 use App\Http\Controllers\Api\LabOrderController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\AdminDashboardController;
