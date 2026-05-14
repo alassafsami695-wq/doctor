@@ -11,20 +11,26 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. السوبر أدمن (Sami Al-Assaf)
+        // 1. السوبر أدمن
         User::create([
             'name' => 'Sami Super Admin',
             'email' => 'admin@clinic.com',
             'password' => Hash::make('password123'),
             'role' => 'super_admin',
+            'is_active' => true,
+            'email_verified_at' => now(),
         ]);
 
-        // 2. الطبيب
+        // 2. الطبيب - ✅ مفعل ومؤكد
         $doctor = User::create([
             'name' => 'Dr. Ahmad',
             'email' => 'doctor@clinic.com',
             'password' => Hash::make('password123'),
             'role' => 'dentist',
+            'is_active' => true,
+            'email_verified_at' => now(),
+            'phone' => '0500000000',
+            'clinic_address' => 'Main Clinic',
         ]);
 
         // 3. الاشتراك
@@ -33,16 +39,17 @@ class DatabaseSeeder extends Seeder
             'starts_at' => now(),
             'ends_at' => now()->addMonths(12),
             'status' => 'active',
-            'months_duration' => 12
+            'months_duration' => 12,
+            'price' => 500000,
         ]);
 
-        // 4. تشغيل جميع الملفات بالترتيب
+        // 4. بقية السيدرز
         $this->call([
-            ProcedureSeeder::class, // الإجراءات أولاً
-            PatientSeeder::class,   // المرضى
-            PartnerSeeder::class,   // المخابر والشركات
-            AppointmentSeeder::class, // المواعيد
-            InvoiceSeeder::class,    // الفواتير
+            ProcedureSeeder::class,
+            PatientSeeder::class,
+            PartnerSeeder::class,
+            AppointmentSeeder::class,
+            InvoiceSeeder::class,
         ]);
     }
 }

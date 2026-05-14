@@ -12,10 +12,13 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable(); // ✅ أضف هذا السطر
             $table->string('password');
             $table->enum('role', ['super_admin', 'dentist', 'receptionist'])->default('dentist');
-            $table->boolean('is_active')->default(true); // لتعطيل حسابات العيادات المتأخرة عن الدفع
+            $table->boolean('is_active')->default(false);
             $table->string('phone')->nullable();
+            $table->string('clinic_address')->nullable();
+            $table->string('verification_code')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
@@ -33,7 +36,7 @@ return new class extends Migration
             $table->text('user_agent')->nullable();
             $table->longText('payload');
             $table->integer('last_activity')->index();
-        });
+        }); 
     }
 
     public function down(): void

@@ -17,16 +17,17 @@ class PatientController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
-        $query = Patient::query();
+        
+        // ← جلب فقط مرضى الطبيب المسجل
+        $query = Patient::where('user_id', auth()->id());
 
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('full_name', 'LIKE', "%{$search}%")
-                  ->orWhere('phone', 'LIKE', "%{$search}%");
+                ->orWhere('phone', 'LIKE', "%{$search}%");
             });
         }
 
-        // تحميل العلاقات مع عد السجلات الطبية
         $patients = $query->withCount('dentalHistory')->latest()->get(); 
 
         return PatientResource::collection($patients);
@@ -47,15 +48,17 @@ class PatientController extends Controller
             return response()->json(['message' => 'المريض غير موجود'], 404);
         }
 
-        return new PatientResource($patient);
+        return new PatientResource($patient); // ← استخدم Resource
     }
-
     /**
      * إضافة مريض جديد
      */
     public function store(StorePatientRequest $request)
     {
-        $patient = Patient::create($request->validated());
+        $data = $request->validated();
+        $data['user_id'] = auth()->id();
+
+        $patient = Patient::create($data);
         return new PatientResource($patient);
     }
 

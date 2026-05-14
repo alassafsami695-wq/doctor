@@ -8,28 +8,22 @@ use Illuminate\Database\Seeder;
 
 class PartnerSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // 1. جلب الطبيب لربط الشركاء بحسابه (لأن حقل user_id مطلوب في التهجير)
-        $doctor = User::where('role', 'dentist')->first();
+        $doctor = User::first(); // ← نفس الطبيب
 
-        // في حال عدم وجود طبيب، نتوقف لتجنب خطأ SQL
         if (!$doctor) {
-            $this->command->warn('لم يتم العثور على طبيب، يرجى التأكد من تشغيل DatabaseSeeder أولاً.');
+            $this->command->warn('لم يتم العثور على طبيب.');
             return;
         }
 
-        // 2. تعريف بيانات الشركاء (مخابر وشركات)
         $partners = [
             [
                 'name' => 'مخبر زهرة الشام',
                 'type' => 'lab',
                 'phone' => '0933111222',
                 'contact' => 'أنس مندوب المخبر',
-                'user_id' => $doctor->id
+                'user_id' => $doctor->id // ← ربط بالطبيب
             ],
             [
                 'name' => 'مخبر التطور الرقمي',
@@ -55,25 +49,22 @@ class PartnerSeeder extends Seeder
         ];
 
         foreach ($partners as $partnerData) {
-            // إنشاء الشريك
             $partner = Partner::create($partnerData);
 
-            // 3. إنشاء حركات مالية (Logs) وهمية لكل شريك
-            // تم إضافة transaction_date لحل مشكلة Field doesn't have a default value
             for ($i = 0; $i < 4; $i++) {
-                $randomDate = now()->subDays(rand(1, 45)); // تاريخ عشوائي خلال آخر شهر ونصف
+                $randomDate = now()->subDays(rand(1, 45));
                 
                 $partner->logs()->create([
                     'type'             => collect(['order', 'payment', 'debt'])->random(),
-                    'amount'           => rand(50000, 750000), // مبالغ بين 50 ألف و 750 ألف
-                    'note'             => 'عملية تجريبية رقم ' . ($i + 1) . ' - تم التوليد آلياً',
-                    'transaction_date' => $randomDate, // الحقل المطلوب في قاعدة البيانات
+                    'amount'           => rand(50000, 750000),
+                    'note'             => 'عملية تجريبية رقم ' . ($i + 1),
+                    'transaction_date' => $randomDate,
                     'created_at'       => $randomDate,
                     'updated_at'       => $randomDate,
                 ]);
             }
         }
 
-        $this->command->info('تم إنشاء الشركاء وسجل الحركات المالية بنجاح.');
+        $this->command->info('تم إنشاء الشركاء بنجاح.');
     }
 }

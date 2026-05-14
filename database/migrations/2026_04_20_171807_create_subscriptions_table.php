@@ -6,25 +6,33 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-            Schema::create('subscriptions', function (Blueprint $table) {
+        Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // الأدمن أو صاحب العيادة
+            $table->foreignId('user_id')
+                  ->constrained()
+                  ->onDelete('cascade');
+            
+            // ✅ بدون constrained() - مجرد رقم عادي
+            $table->foreignId('clinic_id')
+                  ->nullable()
+                  ->comment('سنربطه لاحقاً بـ clinics');
+            
             $table->dateTime('starts_at');
             $table->dateTime('ends_at');
-            $table->enum('status', ['active', 'expired', 'trial'])->default('active');
-            $table->integer('months_duration'); // عدد الأشهر المحجوزة
+            $table->decimal('price', 15, 2)->default(0);
+            $table->enum('status', ['active', 'expired', 'trial', 'cancelled'])
+                  ->default('active');
+            $table->unsignedInteger('months_duration');
+            $table->text('notes')->nullable();
             $table->timestamps();
+
+            $table->index(['user_id', 'status']);
+            $table->index('ends_at');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('subscriptions');

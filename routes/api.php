@@ -23,9 +23,11 @@ use App\Http\Controllers\Api\AdminDashboardController;
 |--------------------------------------------------------------------------
 */
 
-// 1. مسارات عامة (Public Routes)
-Route::post('/login', [AuthController::class, 'login']); 
-
+// مسارات عامة (Public Routes)
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/verify-code', [AuthController::class, 'verifyCode']);
+Route::post('/resend-code', [AuthController::class, 'resendCode']);
 
 // 2. مسارات محمية بالتوثيق فقط
 Route::middleware('auth:sanctum')->group(function () {
@@ -42,7 +44,13 @@ Route::middleware('auth:sanctum')->group(function () {
  */
 Route::middleware(['auth:sanctum', 'check.subscription'])->group(function () {
 
+Route::get('/staff/permissions', [StaffController::class, 'permissions']);
+Route::get('/staff', [StaffController::class, 'index']);
 Route::post('/staff/create', [StaffController::class, 'store']);
+Route::post('/staff/{id}', [StaffController::class, 'update']);
+Route::delete('/staff/{id}', [StaffController::class, 'destroy']);
+
+
 
 Route::prefix('doctor/partners')->group(function () {
         Route::get('/', [PartnerController::class, 'index']);      // جلب الكل
@@ -121,9 +129,13 @@ Route::middleware(['auth:sanctum', 'is.superadmin'])->group(function () {
     
     Route::get('/stats/superadmin', [StatsController::class, 'getSuperAdminStats']);
     Route::post('/admin/activate-subscription', [SubscriptionController::class, 'activate']);
-    Route::get('/admin/stats', [AdminDashboardController::class, 'getStats']);
-    
+    //Route::get('/admin/stats', [AdminDashboardController::class, 'getStats']);
+    Route::get('/admin/stats', [StatsController::class, 'getSuperAdminStats']);
     Route::get('/admin/users', function() {
-        return \App\Models\User::where('role', 'dentist')->get();
+        return \App\Models\User::where('role', 'dentist')->with('subscription')->get();
     });
+    
+    // Route::get('/admin/users', function() {
+    //     return \App\Models\User::where('role', 'dentist')->get();
+    // });
 });

@@ -11,16 +11,16 @@ class AppointmentSeeder extends Seeder
 {
     public function run(): void
     {
-        $patients = Patient::all();
+        $patients = Patient::where('user_id', auth()->id())->get(); // ← فقط مرضى الطبيب المسجل
         $doctor = User::where('role', 'dentist')->first();
 
         if ($patients->count() > 0 && $doctor) {
             foreach ($patients as $patient) {
                 Appointment::create([
                     'patient_id' => $patient->id,
-                    'user_id'    => $doctor->id, // تم تغيير doctor_id إلى user_id ليتطابق مع المهاجرة
+                    'user_id'    => $doctor->id,
                     'appointment_date' => now()->addDays(rand(1, 10))->setHour(rand(10, 18))->setMinute(0),
-                    'status' => collect(['pending', 'completed', 'cancelled'])->random(), // تأكد من الإملاء 'cancelled' بـ LL مزدوجة كما في المهاجرة
+                    'status' => collect(['pending', 'completed', 'cancelled'])->random(),
                     'notes' => 'مراجعة دورية للمريض ' . $patient->full_name,
                 ]);
             }

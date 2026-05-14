@@ -5,54 +5,86 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Subscription;
-use App\Models\Payment; // تأكد من استدعاء موديل الدفع
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class SubscriptionController extends Controller
 {
+    /**
+     * تفعيل أو تجديد الاشتراك
+     */
     public function activate(Request $request)
     {
-        // 1. التحقق من البيانات المرسلة
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'months'  => 'required|integer|min:1',
-            'price'   => 'required|numeric|min:0', // أضفنا حقل السعر لزيادة الرصيد
+            'price'   => 'required|numeric|min:0',
         ]);
 
-        // استخدام Transaction لضمان تنفيذ العمليتين معاً (الاشتراك والدفع)
         return DB::transaction(function () use ($request) {
             
-            $startsAt = Carbon::now();
-            $endsAt = Carbon::now()->addMonths($request->months);
+            $existingSubscription = Subscription::where('user_id', $request->user_id)->first();
 
-            // 2. إنشاء أو تحديث الاشتراك
+            if ($existingSubscription && $existingSubscription->isActive()) {
+                // تمديد الاشتراك الحالي
+                $startsAt = Carbon::parse($existingSubscription->starts_at);
+                $endsAt = Carbon::parse($existingSubscription->ends_at)->addMonths($request->months);
+                $totalMonths = $existingSubscription->months_duration + $request->months;
+            } else {
+                // اشتراك جديد أو منتهي
+                $startsAt = Carbon::now();
+                $endsAt = Carbon::now()->addMonths($request->months);
+                $totalMonths = $request->months;
+            }
+
             $subscription = Subscription::updateOrCreate(
                 ['user_id' => $request->user_id],
                 [
                     'starts_at'       => $startsAt,
                     'ends_at'         => $endsAt,
-                    'months_duration' => $request->months,
+                    'months_duration' => $totalMonths,
+                    'price'           => $request->price,
                     'status'          => 'active'
                 ]
             );
 
-            // 3. إنشاء سجل دفع (هنا يزداد رصيد الآدمن)
-            // نربط الدفعة بـ subscription_id لتميزها عن فواتير المرضى
             Payment::create([
                 'subscription_id' => $subscription->id,
                 'amount'          => $request->price,
-                'payment_method'  => 'admin_activation', // تفعيل يدوي من الآدمن
+                'payment_method'  => 'admin_activation',
                 'payment_date'    => Carbon::now(),
-                'invoice_id'      => null, // اتركها فارغة لأنها ليست فاتورة مريض
+                'invoice_id'      => null,
             ]);
 
             return response()->json([
-                'message'    => 'تم تفعيل الاشتراك وزيادة رصيد الآدمن بنجاح',
-                'expires_at' => $endsAt->toDateTimeString(),
+                'message'      => 'تم تفعيل الاشتراك وزيادة الرصيد بنجاح',
+                'expires_at'   => $endsAt->toDateTimeString(),
                 'amount_added' => $request->price
             ]);
         });
+    }
+
+    /**
+     * التحقق من حالة الاشتراك
+     */
+    public function checkStatus($userId)
+    {
+        $subscription = Subscription::where('user_id', $userId)->first();
+
+        if (!$subscription) {
+            return response()->json([
+                'status' => 'none',
+                'message' => 'لا يوجد اشتراك'
+            ]);
+        }
+
+        return response()->json([
+            'status'     => $subscription->isActive() ? 'active' : 'expired',
+            'starts_at'  => $subscription->starts_at,
+            'ends_at'    => $subscription->ends_at,
+            'days_left'  => $subscription->isActive() ? now()->diffInDays($subscription->ends_at) : 0
+        ]);
     }
 }
