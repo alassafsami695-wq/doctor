@@ -13,27 +13,23 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         
-        // ✅ CORS فقط
-        $middleware->prepend([
-            \Illuminate\Http\Middleware\HandleCors::class,
-        ]);
+        /**
+         * ملاحظة: لارافيل 11 يتعامل مع CORS تلقائياً.
+         * لا تقم بإضافة HandleCors::class يدوياً هنا لتجنب تكرار الـ Headers.
+         */
 
-        // ❌ احذف statefulApi() — لا حاجة له مع Bearer Token
-        // $middleware->statefulApi();
-
-        // ✅ استثناء API من CSRF (للـ Preflight)
+        // ✅ استثناء مسارات الـ API من فحص CSRF
+        // هذا ضروري جداً لعمليات الـ Preflight والـ POST من React/Next.js
         $middleware->validateCsrfTokens(except: [
             'api/*',
         ]);
 
+        // ✅ تسجيل الأسماء المستعارة للميدل وير الخاص بك
         $middleware->alias([
             'check.subscription' => \App\Http\Middleware\CheckSubscription::class,
             'is.superadmin'      => \App\Http\Middleware\IsSuperAdmin::class,
         ]);
-        
-        $middleware->appendToGroup('api', [
-            \Illuminate\Http\Middleware\HandleCors::class,
-        ]);
+
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
