@@ -12,18 +12,31 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // 1. تفعيل التعامل مع الجلسات وحالة الاتصال للـ API
-        $middleware->statefulApi();
-
-        // 2. حل مشكلة الخطأ 419: استثناء مسارات الـ API من حماية CSRF
-        $middleware->validateCsrfTokens(except: [
-            'api/*', 
+        
+        // ✅ ترتيب صحيح: HandlePreflight أولاً، ثم HandleCors
+        $middleware->prepend([
+            \App\Http\Middleware\HandlePreflight::class,
+            \Illuminate\Http\Middleware\HandleCors::class,
         ]);
 
-        // 3. تعريف الأسماء المستعارة للوسائط (Middlewares)
+        // 1. تفعيل Sanctum للـ API
+        $middleware->statefulApi();
+
+        // 2. استثناء API من CSRF
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+            'sanctum/csrf-cookie',
+        ]);
+
+        // 3. الأسماء المستعارة
         $middleware->alias([
             'check.subscription' => \App\Http\Middleware\CheckSubscription::class,
             'is.superadmin'      => \App\Http\Middleware\IsSuperAdmin::class,
+        ]);
+        
+        // 4. HandleCors لمجموعة API
+        $middleware->appendToGroup('api', [
+            \Illuminate\Http\Middleware\HandleCors::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
