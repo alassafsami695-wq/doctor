@@ -14,12 +14,14 @@ use App\Models\Staff;
 class AuthController extends Controller
 {
     // ==================== REGISTER (تسجيل جديد) ====================
+    // داخل AuthController.php - دالة register
+
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6', // ✅ أعدت confirmed
+            'password' => 'required|string|min:6',
             'phone' => 'required|string|max:20',
             'clinic_address' => 'nullable|string|max:255',
         ]);
@@ -28,36 +30,40 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // 1. توليد كود التحقق (6 أرقام)
         $verificationCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        // 2. إنشاء المستخدم (غير مفعل)
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'phone' => $request->phone,
-            'clinic_address' => $request->clinic_address,
-            'verification_code' => $verificationCode,
-            'role' => 'dentist',
-            'is_active' => false,
-        ]);
-
-        // 3. إرسال الكود عبر البريد
         try {
-            Mail::raw("مرحباً دكتور {$user->name}،\n\nكود التحقق الخاص بك لتفعيل حساب Oravue هو: {$verificationCode}\n\nصالح لمدة 15 دقيقة.", function ($message) use ($user) {
-                $message->to($user->email)
-                        ->subject('🔐 كود تفعيل حساب Oravue');
-            });
-        } catch (\Exception $e) {
-            \Log::error('Mail Error: ' . $e->getMessage());
-        }
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'phone' => $request->phone,
+                'clinic_address' => $request->clinic_address,
+                'verification_code' => $verificationCode,
+                'role' => 'dentist',
+                'is_active' => false,
+            ]);
 
-        return response()->json([
-            'message' => 'تم إنشاء الحساب. الرجاء التحقق من بريدك الإلكتروني.',
-            'email' => $user->email,
-            'debug_code' => $verificationCode, // ⚠️ احذف هذا في الإنتاج!
-        ], 201);
+            // إرسال الإيميل
+            try {
+                Mail::raw("مرحباً دكتور {$user->name}،\n\nكود التحقق الخاص بك هو: {$verificationCode}", function ($message) use ($user) {
+                    $message->to($user->email)->subject('🔐 كود تفعيل Oravue');
+                });
+            } catch (\Exception $e) {
+                Log::error('SMTP Error: ' . $e->getMessage());
+                // لا تعطل الاستجابة هنا، دع المستخدم يسجل وسنرى الكود في الـ Log
+            }
+
+            return response()->json([
+                'message' => 'تم إنشاء الحساب بنجاح.',
+                'email' => $user->email,
+                'debug_code' => $verificationCode // سيفيدك جداً في التجربة إذا فشل الإيميل
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Registration Database Error: ' . $e->getMessage());
+            return response()->json(['message' => 'خطأ في قاعدة البيانات: ' . $e->getMessage()], 500);
+        }
     }
 
     // ==================== VERIFY CODE (التحقق من الكود) ====================
