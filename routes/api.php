@@ -23,6 +23,13 @@ use App\Http\Controllers\Api\AdminDashboardController;
 |--------------------------------------------------------------------------
 */
 
+Route::get('/debug-db', function () {
+    return [
+        'database' => DB::connection()->getDatabaseName(),
+        'host' => DB::connection()->getConfig('host'),
+        'tables' => DB::select('SHOW TABLES'),
+    ];
+});
 // مسارات عامة (Public Routes)
  
 Route::post('/login', [AuthController::class, 'login']);
