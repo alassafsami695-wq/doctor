@@ -13,30 +13,25 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         
-        // ✅ ترتيب صحيح: HandlePreflight أولاً، ثم HandleCors
-        $middleware->prepend([
+        // ✅ أولاً: HandlePreflight + HandleCors (قبل أي شيء)
+        $middleware->prependToGroup('api', [
             \App\Http\Middleware\HandlePreflight::class,
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);
 
-        // 1. تفعيل Sanctum للـ API
+        // ✅ ثانياً: Sanctum Stateful (بعد CORS)
         $middleware->statefulApi();
 
-        // 2. استثناء API من CSRF
+        // ✅ استثناء API من CSRF
         $middleware->validateCsrfTokens(except: [
             'api/*',
             'sanctum/csrf-cookie',
         ]);
 
-        // 3. الأسماء المستعارة
+        // ✅ الأسماء المستعارة
         $middleware->alias([
             'check.subscription' => \App\Http\Middleware\CheckSubscription::class,
             'is.superadmin'      => \App\Http\Middleware\IsSuperAdmin::class,
-        ]);
-        
-        // 4. HandleCors لمجموعة API
-        $middleware->appendToGroup('api', [
-            \Illuminate\Http\Middleware\HandleCors::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

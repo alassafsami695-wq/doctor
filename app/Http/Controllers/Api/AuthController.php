@@ -21,7 +21,7 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6', // ✅ أعدت confirmed
             'phone' => 'required|string|max:20',
-            'clinic_address' => 'required|string|max:255',
+            'clinic_address' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
