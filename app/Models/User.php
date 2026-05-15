@@ -7,12 +7,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    // تحديث: إضافة الحقول الجديدة هنا
     protected $fillable = [
         'name', 
         'email', 
@@ -30,13 +30,15 @@ class User extends Authenticatable
         'verification_code',
     ];
 
-    // ✅ Accessor: تحويل 'dentist' إلى 'doctor' للـ Frontend
+    protected $appends = ['has_active_subscription'];
+
+    // ✅ تحويل 'dentist' إلى 'doctor' للـ Frontend
     public function getRoleAttribute($value)
     {
         return $value === 'dentist' ? 'doctor' : $value;
     }
 
-    // ✅ Mutator: عند الحفظ، احفظ 'dentist' في قاعدة البيانات
+    // ✅ عند الحفظ، احفظ 'dentist' في قاعدة البيانات
     public function setRoleAttribute($value)
     {
         $this->attributes['role'] = $value === 'doctor' ? 'dentist' : $value;
@@ -51,18 +53,22 @@ class User extends Authenticatable
     }
 
     public function subscriptions(): HasMany {
-        return $this->hasMany(Subscription::class);
+        return $this->hasMany(Subscription::class, 'user_id');
     }
 
-    public function subscription() {
-        return $this->hasOne(Subscription::class)->latestOfMany();
+    // جلب آخر اشتراك بدقة وبشكل آمن
+    public function subscription(): HasOne {
+        return $this->hasOne(Subscription::class, 'user_id')->latestOfMany();
     }
 
-    protected $appends = ['has_active_subscription'];
-
+    // ✅ تعديل الـ Accessor ليتوافق تماماً مع قيم الـ enum (active أو trial) والتواريخ
     public function getHasActiveSubscriptionAttribute() {
-        return $this->subscription()->where('status', 'active')
-                                    ->where('ends_at', '>', now())
-                                    ->exists();
+        $sub = $this->subscription;
+        if (!$sub) {
+            return false;
+        }
+        
+        // يكون فعالاً إذا كانت الحالة active أو trial وتاريخ النهاية لم يأقِ بعد
+        return in_array($sub->status, ['active', 'trial']) && $sub->ends_at > now();
     }
 }

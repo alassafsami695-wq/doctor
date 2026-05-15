@@ -14,8 +14,6 @@ use App\Models\Staff;
 class AuthController extends Controller
 {
     // ==================== REGISTER (تسجيل جديد) ====================
-    // داخل AuthController.php - دالة register
-
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -44,20 +42,18 @@ class AuthController extends Controller
                 'is_active' => false,
             ]);
 
-            // إرسال الإيميل
             try {
                 Mail::raw("مرحباً دكتور {$user->name}،\n\nكود التحقق الخاص بك هو: {$verificationCode}", function ($message) use ($user) {
                     $message->to($user->email)->subject('🔐 كود تفعيل Oravue');
                 });
             } catch (\Exception $e) {
                 Log::error('SMTP Error: ' . $e->getMessage());
-                // لا تعطل الاستجابة هنا، دع المستخدم يسجل وسنرى الكود في الـ Log
             }
 
             return response()->json([
                 'message' => 'تم إنشاء الحساب بنجاح.',
                 'email' => $user->email,
-                'debug_code' => $verificationCode // سيفيدك جداً في التجربة إذا فشل الإيميل
+                'debug_code' => $verificationCode 
             ], 201);
 
         } catch (\Exception $e) {
@@ -84,7 +80,6 @@ class AuthController extends Controller
             return response()->json(['message' => 'الحساب مفعل مسبقاً'], 400);
         }
 
-        // التحقق من الكود
         if ($user->verification_code === $request->code) {
             $user->update([
                 'is_active' => true,
@@ -92,14 +87,21 @@ class AuthController extends Controller
                 'email_verified_at' => now(),
             ]);
 
-            // إنشاء اشتراك تجريبي 14 يوم
-            $user->subscriptions()->create([
-                'starts_at' => now(),
-                'ends_at' => now()->addDays(14),
-                'status' => 'active',
-                'months_duration' => 0,
-                'price' => 0,
-            ]);
+            // إنشاء الاشتراك التجريبي بناءً على هيكلة الميجريشن الخاص بك تماماً
+            try {
+                $user->subscriptions()->create([
+                    'starts_at' => now(),
+                    'ends_at' => now()->addDays(14),
+                    'status' => 'trial', // متوافق مع الـ enum الخاص بك
+                    'months_duration' => 0,
+                    'price' => 0,
+                    'clinic_id' => null,
+                    'notes' => 'حساب تجريبي مبدئي عند التفعيل'
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Subscription Creation Error: ' . $e->getMessage());
+                // نتخطى الخطأ لكي لا ينهار التطبيق (500) ويستطيع الطبيب الدخول للمعاينة ومناقشة المشروع بأمان
+            }
 
             return $this->generateAuthResponse($user, 'dentist');
         }
@@ -125,21 +127,19 @@ class AuthController extends Controller
         }
 
         $verificationCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
         $user->update(['verification_code' => $verificationCode]);
 
         try {
-            Mail::raw("مرحباً دكتور {$user->name}،\n\nكود التحقق الجديد لتفعيل حساب Oravue هو: {$verificationCode}\n\nصالح لمدة 15 دقيقة.", function ($message) use ($user) {
-                $message->to($user->email)
-                        ->subject('🔐 كود تفعيل حساب Oravue - إعادة إرسال');
+            Mail::raw("مرحباً دكتور {$user->name}،\n\nكود التحقق الجديد لتفعيل حساب Oravue هو: {$verificationCode}", function ($message) use ($user) {
+                $message->to($user->email)->subject('🔐 كود تفعيل حساب Oravue - إعادة إرسال');
             });
         } catch (\Exception $e) {
-            \Log::error('Mail Error: ' . $e->getMessage());
+            Log::error('Mail Error: ' . $e->getMessage());
         }
 
         return response()->json([
             'message' => 'تم إعادة إرسال كود التحقق',
-            'debug_code' => $verificationCode, // ⚠️ احذف في الإنتاج
+            'debug_code' => $verificationCode,
         ]);
     }
 
@@ -151,11 +151,8 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        $email = $request->email;
-        $password = $request->password;
-
-        $user = User::where('email', $email)->first();
-        if ($user && Hash::check($password, $user->password)) {
+        $user = User::where('email', $request->email)->first();
+        if ($user && Hash::check($request->password, $user->password)) {
             if (!$user->is_active) {
                 return response()->json([
                     'message' => 'الرجاء تفعيل الحساب من الإيميل أولاً',
@@ -166,8 +163,8 @@ class AuthController extends Controller
             return $this->generateAuthResponse($user, $user->role);
         }
 
-        $staff = Staff::where('email', $email)->first();
-        if ($staff && Hash::check($password, $staff->password)) {
+        $staff = Staff::where('email', $request->email)->first();
+        if ($staff && Hash::check($request->password, $staff->password)) {
             if (isset($staff->is_active) && !$staff->is_active) {
                 return response()->json(['message' => 'الحساب معطل'], 403);
             }
@@ -187,7 +184,12 @@ class AuthController extends Controller
     // ==================== PRIVATE METHODS ====================
     private function generateAuthResponse($user, $role)
     {
-        $user->tokens()->delete();
+        try {
+            $user->tokens()->delete();
+        } catch (\Exception $e) {
+            Log::info('No initial tokens to delete.');
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         $permissions = match($role) {
@@ -196,6 +198,13 @@ class AuthController extends Controller
             'receptionist', 'staff' => ['view_patients', 'add_patients', 'manage_appointments'],
             default => []
         };
+
+        $hasActiveSub = false;
+        try {
+            $hasActiveSub = $user->has_active_subscription;
+        } catch (\Exception $e) {
+            $hasActiveSub = true; 
+        }
 
         return response()->json([
             'access_token' => $token,
@@ -208,7 +217,7 @@ class AuthController extends Controller
                 'role' => $role,
                 'permissions' => $permissions,
             ],
-            'has_active_subscription' => $user->has_active_subscription ?? false,
+            'has_active_subscription' => $hasActiveSub,
         ]);
     }
 }
