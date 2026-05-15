@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
 
 class CheckSubscription
 {
@@ -19,7 +18,7 @@ class CheckSubscription
             return response()->json(['error' => 'غير مصرح بالدخول'], 401);
         }
 
-        // 1. السماح للسوبر أدمن دائماً
+        // 1. السماح للسوبر أدمن دائماً دون قيود
         if ($user instanceof \App\Models\User && $user->role === 'super_admin') {
             return $next($request);
         }
@@ -29,22 +28,14 @@ class CheckSubscription
             if (!$user->is_active) {
                 return response()->json(['error' => 'حساب الموظف معطل حالياً'], 403);
             }
-            // السكرتارية تتبع اشتراك الطبيب (هنا نفترض أنها مرتبطة بطبيب عبر علاقة)
-            // إذا لم يكن هناك ربط مباشر، نعتبرها نشطة طالما حسابها نشط
             return $next($request);
         }
 
-        // 3. فحص اشتراك الطبيب (User)
-        // نبحث عن اشتراك "نشط" لم تنتهِ صلاحيته بعد
-        $subscription = $user->subscriptions()
-            ->where('status', 'active')
-            ->where('ends_at', '>', Carbon::now())
-            ->latest()
-            ->first();
-
-        if (!$subscription) {
+        // 3. فحص اشتراك الطبيب (User) باستخدام الـ Accessor الآمن المربوط بالـ enum
+        // سيعيد true إذا كان لدى الطبيب اشتراك تجريبي trial أو نشط active ولم ينتهِ بعد
+        if (!$user->has_active_subscription) {
             return response()->json([
-                'error' => 'انتهت صلاحية اشتراك العيادة. يرجى التجديد للمتابعة.',
+                'error' => 'انتهت صلاحية اشتراك العيادة أو لم يتم تفعيله. يرجى التجديد للمتابعة.',
                 'subscription_status' => 'expired'
             ], 403);
         }

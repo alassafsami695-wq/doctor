@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +20,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // ✅ إجبار لارافيل على استخدام HTTPS في بيئة الرفع لمنع مشكلة الـ Redirect والـ CORS
+        if (config('app.env') === 'production' || env('RAILWAY_ENVIRONMENT')) {
+            URL::forceScheme('https');
+        }
     }
 }
