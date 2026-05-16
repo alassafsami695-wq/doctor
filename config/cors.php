@@ -4,7 +4,7 @@ return [
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
     'allowed_methods' => ['*'],
     'allowed_origins' => [
-        'https://peppy-fawn-569f3f.netlify.app',
+        'https://peppy-faun-569f3f.netlify.app',  // ✅ تأكد من الـ URL الصحيح
         'http://localhost:3000',
         'http://localhost:5173',
     ],
@@ -12,5 +12,5 @@ return [
     'allowed_headers' => ['*'],
     'exposed_headers' => ['X-Subscription-Status', 'Authorization'],
     'max_age' => 86400,
-    'supports_credentials' => false,
+    'supports_credentials' => true,  // ✅ غيّر إلى true إذا تستخدم Sanctum مع cookies
 ];

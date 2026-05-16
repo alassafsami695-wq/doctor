@@ -13,26 +13,17 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         
-        // ✅ إضافة HandleCors يدوياً في المقدمة
+        // ✅ HandleCors مرة واحدة فقط
         $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
 
-        // ✅ استثناء مسارات الـ API من فحص CSRF
         $middleware->validateCsrfTokens(except: [
-            'api/*',
-            'login',
-            'register',
-            'logout',
-            'verify-code',
-            'resend-code',
+            'sanctum/csrf-cookie',
         ]);
 
-        // ✅ تسجيل الأسماء المستعارة
         $middleware->alias([
             'check.subscription' => \App\Http\Middleware\CheckSubscription::class,
             'is.superadmin'      => \App\Http\Middleware\IsSuperAdmin::class,
         ]);
-
-        $middleware->prepend(\App\Http\Middleware\CustomCors::class);
 
     })
     ->withExceptions(function (Exceptions $exceptions) {
