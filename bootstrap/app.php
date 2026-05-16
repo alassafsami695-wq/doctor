@@ -13,7 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         
-        // ✅ أضف HandleCors يدوياً في المقدمة
+        // ✅ إضافة HandleCors يدوياً في المقدمة
         $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
 
         // ✅ استثناء مسارات الـ API من فحص CSRF
@@ -22,13 +22,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'login',
             'register',
             'logout',
+            'verify-code',
+            'resend-code',
         ]);
 
-        // ✅ تسجيل الأسماء المستعارة للميدل وير
+        // ✅ تسجيل الأسماء المستعارة
         $middleware->alias([
             'check.subscription' => \App\Http\Middleware\CheckSubscription::class,
             'is.superadmin'      => \App\Http\Middleware\IsSuperAdmin::class,
         ]);
+
+        $middleware->prepend(\App\Http\Middleware\CustomCors::class);
 
     })
     ->withExceptions(function (Exceptions $exceptions) {

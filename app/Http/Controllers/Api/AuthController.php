@@ -16,6 +16,7 @@ class AuthController extends Controller
     // ==================== REGISTER (تسجيل جديد) ====================
     public function register(Request $request)
     {
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -47,7 +48,7 @@ class AuthController extends Controller
                     $message->to($user->email)->subject('🔐 كود تفعيل Oravue');
                 });
             } catch (\Exception $e) {
-                Log::error('SMTP Error: ' . $e->getMessage());
+                Log::error('Mail Error: ' . $e->getMessage());
             }
 
             return response()->json([
@@ -87,12 +88,11 @@ class AuthController extends Controller
                 'email_verified_at' => now(),
             ]);
 
-            // إنشاء الاشتراك التجريبي بناءً على هيكلة الميجريشن الخاص بك تماماً
             try {
                 $user->subscriptions()->create([
                     'starts_at' => now(),
                     'ends_at' => now()->addDays(14),
-                    'status' => 'trial', // متوافق مع الـ enum الخاص بك
+                    'status' => 'trial',
                     'months_duration' => 0,
                     'price' => 0,
                     'clinic_id' => null,
@@ -100,7 +100,6 @@ class AuthController extends Controller
                 ]);
             } catch (\Exception $e) {
                 Log::error('Subscription Creation Error: ' . $e->getMessage());
-                // نتخطى الخطأ لكي لا ينهار التطبيق (500) ويستطيع الطبيب الدخول للمعاينة ومناقشة المشروع بأمان
             }
 
             return $this->generateAuthResponse($user, 'dentist');
@@ -125,6 +124,8 @@ class AuthController extends Controller
         if ($user->is_active) {
             return response()->json(['message' => 'الحساب مفعل مسبقاً'], 400);
         }
+
+        
 
         $verificationCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $user->update(['verification_code' => $verificationCode]);
