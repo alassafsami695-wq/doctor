@@ -13,8 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         
-        // ✅ HandleCors مرة واحدة فقط
-        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
+        // ✅ استخدم CustomCors (لا يحتاج config/cors.php)
+        $middleware->prepend(\App\Http\Middleware\CustomCors::class);
 
         $middleware->validateCsrfTokens(except: [
             'sanctum/csrf-cookie',
