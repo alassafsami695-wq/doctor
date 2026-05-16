@@ -17,6 +17,8 @@ class AuthController extends Controller
     public function register(Request $request)
     {
 
+        config(['mail.default' => 'resend']);
+    config(['services.resend.key' => env('RESEND_KEY')]);
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
