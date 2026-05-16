@@ -4,6 +4,12 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
+// ✅ أضف هذا السطر مؤقتاً
+if (!env('APP_KEY')) {
+    putenv('APP_KEY=base64:YOUR_KEY_HERE');
+    $_ENV['APP_KEY'] = 'base64:YOUR_KEY_HERE';
+}
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -13,8 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         
-        // ✅ استخدم CustomCors بدلاً من HandleCors
-        $middleware->prepend(\App\Http\Middleware\CustomCors::class);
+        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
 
         $middleware->validateCsrfTokens(except: [
             'api/*',
