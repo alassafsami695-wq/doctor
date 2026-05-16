@@ -13,8 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         
-        // ✅ HandleCors المدمج فقط
-        $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
+        // ✅ استخدم CustomCors بدلاً من HandleCors
+        $middleware->prepend(\App\Http\Middleware\CustomCors::class);
 
         $middleware->validateCsrfTokens(except: [
             'api/*',

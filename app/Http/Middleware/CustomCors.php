@@ -16,14 +16,12 @@ class CustomCors
             'http://localhost:5173',
         ];
 
-        // ✅ استجب لـ OPTIONS مباشرة
         if ($request->isMethod('OPTIONS')) {
             $response = response('', 204);
         } else {
             $response = $next($request);
         }
 
-        // ✅ أضف CORS Headers
         if (in_array($origin, $allowedOrigins)) {
             $response->headers->set('Access-Control-Allow-Origin', $origin);
             $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
