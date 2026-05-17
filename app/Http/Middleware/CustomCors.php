@@ -11,6 +11,7 @@ class CustomCors
     {
         $origin = $request->header('Origin');
         $allowedOrigins = [
+            'https://doctor-electron.onrender.com',
             'https://peppy-faun-569f3f.netlify.app',
             'http://localhost:3000',
             'http://localhost:5173',
